@@ -7,17 +7,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "vite": "^7.3.1",
-    "@vitejs/plugin-react": "^4.0.0"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "workspaces": [
     "packages/*"
