@@ -1,7 +1,13 @@
 import express from "express";
+import cors from "cors";
 
 const app = express();
 const port = 8000;
+
+app.use(cors())
+app.use(express.json());
+
+
 const users = {
   users_list: [
     {
@@ -41,6 +47,17 @@ const findUserByName = (name) => {
 const findUserById = (id) =>
   users["users_list"].find((user) => user["id"] === id);
 
+const addUser = (user) => {
+  users["users_list"].push(user);
+  return user;
+};
+
+app.post("/users", (req, res) => {
+  const userToAdd = req.body;
+  addUser(userToAdd);
+  res.send();
+});
+
 app.get("/users/:id", (req, res) => {
   const id = req.params["id"]; //or req.params.id
   let result = findUserById(id);
@@ -62,7 +79,6 @@ app.get("/users", (req, res) => {
   }
 });
 
-app.use(express.json());
 
 app.get("/users", (req, res) => {
   res.send(users);
@@ -76,4 +92,32 @@ app.listen(port, () => {
   console.log(
     `Example app listening at http://localhost:${port}`
   );
+});
+
+app.delete("/users/:id", (req, res) => {
+  const userId = req.params.id;
+  const initialLength = users.users_list.length;
+  users.users_list = users.users_list.filter(user => user.id !== userId);
+
+  if (users.users_list.length < initialLength) {
+    res.send({ message: `User ${userId} deleted successfully.` });
+  } else {
+    res.status(404).send({ message: "User not found." });
+  }
+});
+
+app.get("/users", (req, res) => {
+  const { name, job } = req.query;
+
+  let filteredUsers = users.users_list;
+
+  if (name) {
+    filteredUsers = filteredUsers.filter(user => user.name === name);
+  }
+
+  if (job) {
+    filteredUsers = filteredUsers.filter(user => user.job === job);
+  }
+
+  res.send({ users_list: filteredUsers });
 });
