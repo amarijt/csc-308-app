@@ -1,95 +1,58 @@
 import express from "express";
 import cors from "cors";
+import mongoose from "mongoose";
+import userModel from "./user.js";
+
+mongoose.set("debug", true);
+
+mongoose
+  .connect("mongodb://localhost:27017/users")
+  .then(() => console.log("MongoDB connected!"))
+  .catch((error) => console.log(error));
 
 const app = express();
 const port = 8000;
 
-app.use(cors())
+app.use(cors());
 app.use(express.json());
 
-
-const users = {
-  users_list: [
-    {
-      id: "xyz789",
-      name: "Charlie",
-      job: "Janitor"
-    },
-    {
-      id: "abc123",
-      name: "Mac",
-      job: "Bouncer"
-    },
-    {
-      id: "ppp222",
-      name: "Mac",
-      job: "Professor"
-    },
-    {
-      id: "yat999",
-      name: "Dee",
-      job: "Aspring actress"
-    },
-    {
-      id: "zap555",
-      name: "Dennis",
-      job: "Bartender"
-    }
-  ]
-};
-
-const findUserByName = (name) => {
-  return users["users_list"].filter(
-    (user) => user["name"] === name
-  );
-};
-
-const findUserById = (id) =>
-  users["users_list"].find((user) => user["id"] === id);
-
-const addUser = (user) => {
-  users["users_list"].push(user);
-  return user;
-};
-
-const generateId = () => {
-  return Math.random().toString(36).substring(2, 9);
-};
-
-app.post("/users", (req, res) => {
-  const userToAdd = req.body;
-  const newUser = {
-    id: generateId(),
-    ...userToAdd
-  };
-  addUser(newUser);
-  res.status(201).send(newUser);
+app.get("/users", (req, res) => {
+  const { name, job } = req.query;
+  const query = {};
+  if (name) query.name = name;
+  if (job) query.job = job;
+  userModel
+    .find(query)
+    .then(users => res.json({ users_list: users }))
+    .catch(err => res.status(500).json({ error: err.message }));
 });
 
 app.get("/users/:id", (req, res) => {
-  const id = req.params["id"]; //or req.params.id
-  let result = findUserById(id);
-  if (result === undefined) {
-    res.status(404).send("Resource not found.");
-  } else {
-    res.send(result);
-  }
+  userModel
+    .findById(req.params.id)
+    .then(user => {
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json(user);
+    })
+    .catch(err => res.status(500).json({ error: err.message }));
 });
 
-app.get("/users", (req, res) => {
-  const name = req.query.name;
-  if (name != undefined) {
-    let result = findUserByName(name);
-    result = { users_list: result };
-    res.send(result);
-  } else {
-    res.send(users);
-  }
+app.post("/users", (req, res) => {
+  const newUser = new userModel(req.body);
+  newUser
+    .save()
+    .then(user => res.status(201).json(user))
+    .catch(err => res.status(400).json({ error: err.message }));
 });
 
-
-app.get("/users", (req, res) => {
-  res.send(users);
+app.delete("/users/:id", (req, res) => {
+  userModel
+    .findByIdAndDelete(req.params.id)
+    .then(user => {
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.status(204).send();
+    })
+    .catch(err => res.status(500).json({ error: err.message }));
 });
 
 app.get("/", (req, res) => {
@@ -97,35 +60,13 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(
-    `Example app listening at http://localhost:${port}`
-  );
+  console.log(`Example app listening at http://localhost:${port}`);
 });
 
-app.delete("/users/:id", (req, res) => {
-  const userId = req.params.id;
-  const initialLength = users.users_list.length;
-  users.users_list = users.users_list.filter(user => user.id !== userId);
-  
-  if (users.users_list.length < initialLength) {
-    res.status(204).send(); 
-  } else {
-    res.status(404).send({ message: "User not found." });
-  }
-});
-
-app.get("/users", (req, res) => {
-  const { name, job } = req.query;
-
-  let filteredUsers = users.users_list;
-
-  if (name) {
-    filteredUsers = filteredUsers.filter(user => user.name === name);
-  }
-
-  if (job) {
-    filteredUsers = filteredUsers.filter(user => user.job === job);
-  }
-
-  res.send({ users_list: filteredUsers });
-});
+export default {
+  addUser: (user) => new userModel(user).save(),
+  getUsers: (name, job) => userModel.find({ ...(name && { name }), ...(job && { job }) }),
+  findUserById: (id) => userModel.findById(id),
+  findUserByName: (name) => userModel.find({ name }),
+  findUserByJob: (job) => userModel.find({ job }),
+};
